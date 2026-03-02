@@ -1,0 +1,5 @@
+{
+  "name": "Doodlive",
+  "description": "An app that brings children's drawings to life using AI-powered video generation.",
+  "requestFramePermissions": ["camera"]
+}

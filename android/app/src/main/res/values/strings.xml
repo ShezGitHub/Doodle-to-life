@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Doodle Alive</string>
+    <string name="title_activity_main">Doodle Alive</string>
+    <string name="package_name">com.doodlealive.app</string>
+    <string name="custom_url_scheme">com.doodlealive.app</string>
+</resources>

@@ -1,22 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import {
-  Camera,
-  Upload,
-  Sparkles,
-  ArrowLeft,
-  Play,
-  RefreshCw,
-  Palette,
-  AlertCircle,
-  Info,
-  Star,
-  Heart,
-  Cloud,
-  Sun,
-  Pencil,
-  CheckCircle2,
-} from 'lucide-react';
+import { Camera, Upload, Sparkles, ArrowLeft, Play, RefreshCw, Palette, CircleAlert as AlertCircle, Info, Star, Heart, Cloud, Sun, Pencil, CircleCheck as CheckCircle2 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import {

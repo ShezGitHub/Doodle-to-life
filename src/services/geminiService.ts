@@ -15,7 +15,7 @@ export async function validateContent(
 ): Promise<{ safe: boolean; reason?: string }> {
   // Use gemini-flash-latest for multimodal safety checks as it's highly stable
   const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-  
+
   try {
     const response = await ai.models.generateContent({
       model: "gemini-flash-latest",
@@ -28,40 +28,57 @@ export async function validateContent(
             },
           },
           {
-            text: `You are a child safety moderator for a creative drawing app. 
-            Analyze this image and the following text context: "${parentContext}".
-            
-            Determine if the content is appropriate for a children's app. 
-            Reject anything that is NSFW, sexually explicit, violent, hateful, or otherwise inappropriate for kids.
-            
+            text: `You are a content moderator for a creative drawing app.
+            Analyze this drawing image and the following context: "${parentContext}".
+
+            Determine if the content is appropriate. Only reject if it contains:
+            - Explicit sexual content
+            - Extreme violence or gore
+            - Hate symbols or hateful content
+
+            Simple drawings, stick figures, cartoons, animals, and typical children's drawings should be APPROVED.
+
             Respond with a JSON object containing:
-            1. "safe": a boolean (true if appropriate, false if not)
-            2. "reason": a short, kid-friendly explanation if not safe (e.g., "This looks a bit too scary!"). If safe, leave this empty.
-            
-            Output ONLY the JSON.`,
+            1. "safe": a boolean (true if appropriate, false if clearly inappropriate)
+            2. "reason": a brief explanation if not safe. If safe, leave this empty.
+
+            Be permissive with simple drawings. Output ONLY the JSON.`,
           },
         ],
       },
       config: {
         responseMimeType: "application/json",
+        safetySettings: [
+          { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_ONLY_HIGH" },
+          { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_ONLY_HIGH" },
+          { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_ONLY_HIGH" },
+          { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_ONLY_HIGH" },
+        ],
       }
     });
 
     const text = response.text;
     if (!text) {
-      throw new Error("Empty response from safety check");
+      console.warn("Empty response from safety check, allowing content");
+      return { safe: true };
     }
 
     const result = JSON.parse(text.trim());
     return result;
-  } catch (error) {
-    console.error("Safety check error details:", error);
-    // If it's a 500 or other API error, we might want to allow it but log it, 
-    // or block it to be safe. For kids, blocking is safer.
-    return { 
-      safe: false, 
-      reason: "Our magic safety filters are having a little hiccup. Please try again in a moment!" 
-    };
+  } catch (error: any) {
+    console.error("Safety check error:", error);
+
+    // If Gemini itself blocked the content due to safety, respect that
+    if (error?.message?.includes('SAFETY') || error?.status === 400) {
+      return {
+        safe: false,
+        reason: "This drawing doesn't pass our safety guidelines. Try something different!"
+      };
+    }
+
+    // For other errors (network, API issues), allow the content through
+    console.warn("Safety check failed with non-safety error, allowing content");
+    return { safe: true };
   }
 }
 

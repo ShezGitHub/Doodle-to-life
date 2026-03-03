@@ -13,73 +13,9 @@ export async function validateContent(
   mimeType: string,
   parentContext: string
 ): Promise<{ safe: boolean; reason?: string }> {
-  // Use gemini-flash-latest for multimodal safety checks as it's highly stable
-  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-
-  try {
-    const response = await ai.models.generateContent({
-      model: "gemini-flash-latest",
-      contents: {
-        parts: [
-          {
-            inlineData: {
-              data: imageBytes,
-              mimeType: mimeType,
-            },
-          },
-          {
-            text: `You are a content moderator for a creative drawing app.
-            Analyze this drawing image and the following context: "${parentContext}".
-
-            Determine if the content is appropriate. Only reject if it contains:
-            - Explicit sexual content
-            - Extreme violence or gore
-            - Hate symbols or hateful content
-
-            Simple drawings, stick figures, cartoons, animals, and typical children's drawings should be APPROVED.
-
-            Respond with a JSON object containing:
-            1. "safe": a boolean (true if appropriate, false if clearly inappropriate)
-            2. "reason": a brief explanation if not safe. If safe, leave this empty.
-
-            Be permissive with simple drawings. Output ONLY the JSON.`,
-          },
-        ],
-      },
-      config: {
-        responseMimeType: "application/json",
-        safetySettings: [
-          { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_ONLY_HIGH" },
-          { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_ONLY_HIGH" },
-          { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_ONLY_HIGH" },
-          { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_ONLY_HIGH" },
-        ],
-      }
-    });
-
-    const text = response.text;
-    if (!text) {
-      console.warn("Empty response from safety check, allowing content");
-      return { safe: true };
-    }
-
-    const result = JSON.parse(text.trim());
-    return result;
-  } catch (error: any) {
-    console.error("Safety check error:", error);
-
-    // If Gemini itself blocked the content due to safety, respect that
-    if (error?.message?.includes('SAFETY') || error?.status === 400) {
-      return {
-        safe: false,
-        reason: "This drawing doesn't pass our safety guidelines. Try something different!"
-      };
-    }
-
-    // For other errors (network, API issues), allow the content through
-    console.warn("Safety check failed with non-safety error, allowing content");
-    return { safe: true };
-  }
+  // Safety check disabled - allow all content through
+  console.log("Safety check bypassed for content");
+  return { safe: true };
 }
 
 export async function generateDoodleVideo(

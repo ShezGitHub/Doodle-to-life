@@ -1,12 +1,9 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Camera, Upload, Sparkles, ArrowLeft, Play, RefreshCw, Palette, CircleAlert as AlertCircle, Info, Star, Heart, Cloud, Sun, Pencil, CircleCheck as CheckCircle2 } from 'lucide-react';
+import { Camera, Upload, Sparkles, ArrowLeft, Play, RefreshCw, Palette, CircleAlert as AlertCircle, Info, Star, Heart, Cloud, Sun, Pencil, CircleCheck as CheckCircle2, LogOut } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import {
-  generateDoodleVideo,
-  validateContent
-} from './services/geminiService';
+import { generateDoodleVideo } from './services/geminiService';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -34,7 +31,23 @@ const FloatingDoodle = ({ icon: Icon, delay = 0, className }: { icon: any, delay
   </motion.div>
 );
 
-type Screen = 'welcome' | 'projects' | 'capture' | 'camera' | 'review' | 'generating' | 'result';
+type Screen = 'welcome' | 'projects' | 'capture' | 'camera' | 'review' | 'generating' | 'result' | 'memories';
+
+interface Generation {
+  id: string;
+  video_url: string;
+  thumbnail_url: string | null;
+  drawing_prompt: string | null;
+  parent_context: string | null;
+  created_at: string;
+}
+
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  avatarUrl: string;
+}
 
 interface Project {
   id: string;
@@ -58,7 +71,132 @@ const PROJECTS: Project[] = [
   { id: '12', title: 'Busy City', description: 'Draw a flying car or a very tall building!', icon: '🏙️' },
 ];
 
+const CREDIT_PACKS = [
+  { id: 'starter', label: 'Starter', credits: 5,  price: '$4.99',  unitAmount: 499 },
+  { id: 'family',  label: 'Family',  credits: 20, price: '$14.99', unitAmount: 1499 },
+  { id: 'studio',  label: 'Studio',  credits: 50, price: '$29.99', unitAmount: 2999 },
+] as const;
+
+function LegalPage({ page }: { page: 'tos' | 'privacy' }) {
+  return (
+    <div className="min-h-screen bg-[#f5f5f0] text-[#1a1a1a] font-serif">
+      <header className="p-6 flex items-center gap-2">
+        <a href="/" className="flex items-center gap-2 hover:opacity-70 transition-opacity">
+          <Palette className="w-7 h-7 text-[#5A5A40]" />
+          <span className="text-xl font-bold tracking-tight">Doodlive</span>
+        </a>
+      </header>
+
+      <main className="max-w-2xl mx-auto px-8 py-10 space-y-8 font-sans">
+        {page === 'tos' ? (
+          <>
+            <div className="space-y-2">
+              <h1 className="text-4xl font-serif font-light">Terms of Service</h1>
+              <p className="text-sm text-[#1a1a1a]/40">Last updated: March 2026</p>
+            </div>
+
+            <section className="space-y-3">
+              <h2 className="text-lg font-bold">1. Service</h2>
+              <p className="text-[#1a1a1a]/70 leading-relaxed">Doodlive ("we", "us") lets users upload images of drawings and generate short animated videos using Google Gemini/Veo AI. The service is intended for families and children, under parental supervision.</p>
+            </section>
+
+            <section className="space-y-3">
+              <h2 className="text-lg font-bold">2. Account &amp; Eligibility</h2>
+              <p className="text-[#1a1a1a]/70 leading-relaxed">You must sign in with a Google account to use Doodlive. By signing in, you confirm you are at least 18 years old, or are a parent/guardian using the service on behalf of a child. You are responsible for all activity under your account.</p>
+            </section>
+
+            <section className="space-y-3">
+              <h2 className="text-lg font-bold">3. Credits &amp; Payments</h2>
+              <p className="text-[#1a1a1a]/70 leading-relaxed">Each video generation costs 1 credit. New accounts receive 1 free credit. Additional credits can be purchased via Stripe Checkout. All sales are final — credits are non-refundable except where required by law. If a generation fails due to a technical error on our side, the credit is automatically refunded to your account.</p>
+            </section>
+
+            <section className="space-y-3">
+              <h2 className="text-lg font-bold">4. Content</h2>
+              <p className="text-[#1a1a1a]/70 leading-relaxed">You retain ownership of images you upload. By uploading, you grant us a limited licence to process your image solely for the purpose of generating your video. You must not upload images that contain harmful, illegal, or offensive content. We reserve the right to refuse or remove content at our discretion.</p>
+            </section>
+
+            <section className="space-y-3">
+              <h2 className="text-lg font-bold">5. Limitation of Liability</h2>
+              <p className="text-[#1a1a1a]/70 leading-relaxed">Doodlive is provided "as is". We make no guarantees about availability or video quality. To the maximum extent permitted by law, our total liability to you is limited to the amount you paid us in the 30 days before the claim arose.</p>
+            </section>
+
+            <section className="space-y-3">
+              <h2 className="text-lg font-bold">6. Changes &amp; Termination</h2>
+              <p className="text-[#1a1a1a]/70 leading-relaxed">We may update these terms at any time. Continued use after changes constitutes acceptance. We may suspend or terminate accounts that violate these terms.</p>
+            </section>
+
+            <section className="space-y-3">
+              <h2 className="text-lg font-bold">7. Contact</h2>
+              <p className="text-[#1a1a1a]/70 leading-relaxed">Questions? Email us at <a href="mailto:hello@doodlive.app" className="underline text-[#5A5A40]">hello@doodlive.app</a>.</p>
+            </section>
+          </>
+        ) : (
+          <>
+            <div className="space-y-2">
+              <h1 className="text-4xl font-serif font-light">Privacy Policy</h1>
+              <p className="text-sm text-[#1a1a1a]/40">Last updated: March 2026</p>
+            </div>
+
+            <section className="space-y-3">
+              <h2 className="text-lg font-bold">1. Data We Collect</h2>
+              <p className="text-[#1a1a1a]/70 leading-relaxed">When you sign in with Google we receive your name, email address, and profile picture from Google. When you use the service we process the drawing images you upload to generate videos. We store your account details, credit balance, and session information in a local database.</p>
+            </section>
+
+            <section className="space-y-3">
+              <h2 className="text-lg font-bold">2. How We Use Your Data</h2>
+              <p className="text-[#1a1a1a]/70 leading-relaxed">Your data is used solely to provide the service: to authenticate you, track credits, process payments, and generate your animated videos. We do not sell your data or use it for advertising.</p>
+            </section>
+
+            <section className="space-y-3">
+              <h2 className="text-lg font-bold">3. Third-Party Services</h2>
+              <p className="text-[#1a1a1a]/70 leading-relaxed">We use the following third-party services:</p>
+              <ul className="list-disc list-inside text-[#1a1a1a]/70 space-y-1 ml-2">
+                <li><strong>Google OAuth</strong> — for authentication (Google Privacy Policy applies)</li>
+                <li><strong>Google Gemini / Veo</strong> — your uploaded image is sent to Google's AI to generate the video</li>
+                <li><strong>Stripe</strong> — for payment processing (Stripe Privacy Policy applies)</li>
+              </ul>
+            </section>
+
+            <section className="space-y-3">
+              <h2 className="text-lg font-bold">4. Children's Privacy</h2>
+              <p className="text-[#1a1a1a]/70 leading-relaxed">Doodlive is designed for use by families. We do not knowingly collect personal data from children under 13 directly — accounts must be created and managed by a parent or guardian. If you believe a child has provided personal data without parental consent, contact us and we will delete it promptly.</p>
+            </section>
+
+            <section className="space-y-3">
+              <h2 className="text-lg font-bold">5. Data Retention</h2>
+              <p className="text-[#1a1a1a]/70 leading-relaxed">Generated videos are stored on our servers temporarily and may be deleted after 30 days. Account data is retained while your account is active. You may request deletion of your account and data at any time by contacting us.</p>
+            </section>
+
+            <section className="space-y-3">
+              <h2 className="text-lg font-bold">6. Contact</h2>
+              <p className="text-[#1a1a1a]/70 leading-relaxed">For privacy questions or data deletion requests, email <a href="mailto:hello@doodlive.app" className="underline text-[#5A5A40]">hello@doodlive.app</a>.</p>
+            </section>
+          </>
+        )}
+      </main>
+
+      <footer className="py-8 text-center border-t border-black/5">
+        <a href="/" className="text-xs font-sans text-[#1a1a1a]/40 hover:text-[#1a1a1a]/70 transition-colors">
+          ← Back to Doodlive
+        </a>
+      </footer>
+    </div>
+  );
+}
+
 export default function App() {
+  // Simple client-side routing for legal pages
+  const pathname = window.location.pathname;
+  if (pathname === '/tos') return <LegalPage page="tos" />;
+  if (pathname === '/privacy') return <LegalPage page="privacy" />;
+
+  const [user, setUser] = useState<User | null | undefined>(undefined);
+  const [credits, setCredits] = useState<number | null>(null);
+  const [showPaywall, setShowPaywall] = useState(false);
+  const [paymentSuccess, setPaymentSuccess] = useState<number | null>(null);
+  const [memories, setMemories] = useState<Generation[]>([]);
+  const [memoriesLoaded, setMemoriesLoaded] = useState(false);
+  const [activeMemory, setActiveMemory] = useState<Generation | null>(null);
   const [screen, setScreen] = useState<Screen>('welcome');
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
@@ -67,6 +205,57 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+
+  useEffect(() => {
+    // Check for successful payment redirect
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('payment') === 'success') {
+      const added = parseInt(params.get('credits') ?? '0', 10);
+      if (added > 0) setPaymentSuccess(added);
+      window.history.replaceState({}, '', '/');
+    }
+
+    fetch('/api/me')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        setUser(data);
+        if (data) setCredits(data.credits ?? 0);
+      });
+  }, []);
+
+  // Dismiss payment success toast after 4s
+  useEffect(() => {
+    if (paymentSuccess === null) return;
+    const t = setTimeout(() => setPaymentSuccess(null), 4000);
+    return () => clearTimeout(t);
+  }, [paymentSuccess]);
+
+  const handleLogout = async () => {
+    await fetch('/auth/logout', { method: 'POST' });
+    setUser(null);
+    setCredits(null);
+    reset();
+  };
+
+  const handleBuyCredits = async (pack: typeof CREDIT_PACKS[number]['id']) => {
+    const res = await fetch('/api/checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pack }),
+    });
+    if (!res.ok) return;
+    const { url } = await res.json();
+    if (url) window.location.href = url;
+  };
+
+  const loadMemories = async () => {
+    if (memoriesLoaded) return;
+    const res = await fetch('/api/generations');
+    if (res.ok) {
+      setMemories(await res.json());
+      setMemoriesLoaded(true);
+    }
+  };
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const cameraPreviewRef = useRef<HTMLVideoElement>(null);
@@ -152,25 +341,33 @@ export default function App() {
       const base64Data = capturedImage.split(',')[1];
       const mimeType = capturedImage.split(';')[0].split(':')[1];
 
-      const safetyResult = await validateContent(base64Data, mimeType, parentContext);
-      if (!safetyResult.safe) {
-        setError(safetyResult.reason || "This doodle looks a bit too wild for our magic filters! Let's try drawing something else.");
-        setScreen('review');
-        return;
-      }
-
-      const url = await generateDoodleVideo(
+      const result = await generateDoodleVideo(
         base64Data,
         mimeType,
         parentContext,
         selectedProject?.description
       );
 
-      setVideoUrl(url);
+      setCredits(result.credits);
+      setVideoUrl(result.videoUrl);
+      const genId = result.videoUrl.split('/').pop()?.replace('.mp4', '') ?? '';
+      setMemories(prev => [{
+        id: genId,
+        video_url: result.videoUrl,
+        thumbnail_url: `/api/images/${genId}.jpg`,
+        drawing_prompt: selectedProject?.description ?? null,
+        parent_context: parentContext || null,
+        created_at: new Date().toISOString(),
+      }, ...prev]);
       setScreen('result');
     } catch (err: any) {
       console.error(err);
-      setError(err.message || "Something went wrong while bringing your doodle to life. Make sure you've added your GEMINI_API_KEY to the .env file.");
+      if (err.code === 'no_credits') {
+        setShowPaywall(true);
+        setScreen('review');
+        return;
+      }
+      setError(err.message || "Something went wrong while bringing your doodle to life.");
       setScreen('review');
     }
   };
@@ -184,6 +381,132 @@ export default function App() {
     setSelectedProject(null);
   };
 
+  // Loading state — wait for auth check before rendering anything
+  if (user === undefined) {
+    return (
+      <div className="min-h-screen bg-[#f5f5f0] flex items-center justify-center">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+          className="w-10 h-10 border-4 border-[#5A5A40]/20 border-t-[#5A5A40] rounded-full"
+        />
+      </div>
+    );
+  }
+
+  // Login screen — shown when not authenticated
+  if (user === null) {
+    return (
+      <div className="min-h-screen bg-[#f5f5f0] text-[#1a1a1a] font-serif flex flex-col">
+        {/* Header */}
+        <header className="p-6 flex items-center gap-2">
+          <Palette className="w-7 h-7 text-[#5A5A40]" />
+          <span className="text-xl font-bold tracking-tight">Doodlive</span>
+        </header>
+
+        {/* Main two-column content */}
+        <main className="flex-1 flex items-center">
+          <div className="max-w-6xl mx-auto w-full px-8 grid md:grid-cols-2 gap-16 items-center py-12">
+            {/* Left column */}
+            <motion.div
+              initial={{ opacity: 0, x: -24 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.5 }}
+              className="space-y-8"
+            >
+              <div className="space-y-4">
+                <h1 className="text-6xl lg:text-7xl font-light leading-tight">
+                  Where <span className="italic">doodles</span><br />come to life.
+                </h1>
+                <p className="text-[#1a1a1a]/50 font-sans text-lg leading-relaxed max-w-sm">
+                  Join thousands of families turning simple drawings into magical 3D animations.
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                <a
+                  href="/auth/google"
+                  className="inline-flex items-center gap-3 bg-white border border-black/10 hover:border-[#5A5A40] hover:shadow-md transition-all rounded-full py-4 px-8 font-sans font-semibold text-[#1a1a1a]"
+                >
+                  <svg className="w-5 h-5" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                  </svg>
+                  Sign in with Google
+                </a>
+
+                <div className="space-y-1">
+                  <button
+                    onClick={() => { setUser(undefined); fetch('/api/me').then(r => r.ok ? r.json() : null).then(setUser); }}
+                    className="block text-xs text-[#1a1a1a]/40 font-sans hover:text-[#1a1a1a]/70 transition-colors"
+                  >
+                    Already logged in? Click here to refresh
+                  </button>
+                  <p className="text-xs text-[#1a1a1a]/30 font-sans">
+                    By signing in, you agree to our{' '}
+                    <a href="/tos" className="underline hover:text-[#1a1a1a]/60 transition-colors">Terms of Service</a>
+                    {' '}and{' '}
+                    <a href="/privacy" className="underline hover:text-[#1a1a1a]/60 transition-colors">Privacy Policy</a>.
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Right column — demo video */}
+            <motion.div
+              initial={{ opacity: 0, x: 24 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.5, delay: 0.15 }}
+              className="relative"
+            >
+              <div className="relative rounded-[32px] overflow-hidden shadow-2xl bg-black aspect-video">
+                <video
+                  src="https://res.cloudinary.com/dnrccfwtk/video/upload/v1772217630/hf_20260227_093017_5262ad97-b8a4-4751-a1d9-bf30935662f3_rody1o.mp4"
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute bottom-4 left-4 right-4">
+                  <div className="inline-flex items-center gap-2 bg-black/60 backdrop-blur-sm text-white px-4 py-2 rounded-full font-sans text-sm font-medium">
+                    <Sparkles className="w-4 h-4" />
+                    Draw it, Snap it, Watch it Pop!
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        </main>
+
+        {/* Feature strip */}
+        <div className="border-t border-black/5">
+          <div className="max-w-6xl mx-auto px-8 py-8 grid grid-cols-3 gap-4 text-center">
+            {[
+              { icon: '✨', label: 'Popping Animations' },
+              { icon: '📷', label: 'Save Memories' },
+              { icon: '❤️', label: 'Share with Family' },
+            ].map(({ icon, label }) => (
+              <div key={label} className="space-y-2">
+                <div className="text-3xl">{icon}</div>
+                <p className="text-[10px] uppercase tracking-[0.15em] font-sans font-bold text-[#1a1a1a]/40">{label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="py-4 text-center">
+          <p className="text-[10px] uppercase tracking-[0.2em] text-[#1a1a1a]/30 font-sans font-bold">
+            Powered by Gemini & Veo
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#f5f5f0] text-[#1a1a1a] font-serif selection:bg-[#5A5A40] selection:text-white">
       <header className="p-6 flex justify-between items-center max-w-4xl mx-auto w-full">
@@ -194,7 +517,152 @@ export default function App() {
           <Palette className="w-8 h-8 text-[#5A5A40]" />
           <span>Doodlive</span>
         </button>
+
+        <div className="flex items-center gap-3">
+          {/* Credit badge */}
+          <button
+            onClick={() => setShowPaywall(true)}
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-sans font-semibold transition-all",
+              credits === 0
+                ? "bg-red-50 text-red-500 border border-red-100 hover:bg-red-100"
+                : "bg-[#5A5A40]/10 text-[#5A5A40] border border-[#5A5A40]/20 hover:bg-[#5A5A40]/20"
+            )}
+          >
+            ⚡ {credits ?? '…'}
+          </button>
+
+          {user.avatarUrl ? (
+            <img src={user.avatarUrl} alt={user.name} className="w-9 h-9 rounded-full border border-black/10" />
+          ) : (
+            <div className="w-9 h-9 rounded-full bg-[#5A5A40] flex items-center justify-center text-white text-sm font-bold">
+              {user.name.charAt(0).toUpperCase()}
+            </div>
+          )}
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-1.5 text-sm font-sans text-[#1a1a1a]/50 hover:text-[#1a1a1a] transition-colors"
+          >
+            <LogOut className="w-4 h-4" />
+            Sign out
+          </button>
+        </div>
       </header>
+
+      {/* Payment success toast */}
+      <AnimatePresence>
+        {paymentSuccess !== null && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-[#5A5A40] text-white px-6 py-3 rounded-full shadow-xl font-sans text-sm font-semibold flex items-center gap-2"
+          >
+            ⚡ {paymentSuccess} credits added — let's create!
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Memory viewer modal */}
+      <AnimatePresence>
+        {activeMemory && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-6"
+            onClick={() => setActiveMemory(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={e => e.stopPropagation()}
+              className="bg-white rounded-[40px] shadow-2xl overflow-hidden max-w-2xl w-full"
+            >
+              <video
+                src={activeMemory.video_url}
+                controls
+                autoPlay
+                loop
+                className="w-full aspect-video"
+              />
+              <div className="p-6 flex items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="font-bold truncate">{activeMemory.drawing_prompt || 'Free Draw'}</p>
+                  <p className="text-sm text-[#1a1a1a]/40 font-sans">
+                    {new Date(activeMemory.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                  </p>
+                </div>
+                <div className="flex items-center gap-3 shrink-0">
+                  <a
+                    href={activeMemory.video_url}
+                    download="memory.mp4"
+                    className="bg-[#5A5A40] text-white px-5 py-2.5 rounded-full font-sans font-semibold text-sm flex items-center gap-2 hover:opacity-90 transition-opacity"
+                  >
+                    <Play className="w-4 h-4 fill-current" />
+                    Save
+                  </a>
+                  <button
+                    onClick={() => setActiveMemory(null)}
+                    className="p-2.5 hover:bg-black/5 rounded-full transition-colors text-[#1a1a1a]/50"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Paywall modal */}
+      <AnimatePresence>
+        {showPaywall && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-6"
+            onClick={() => setShowPaywall(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={e => e.stopPropagation()}
+              className="bg-white rounded-[40px] shadow-2xl p-10 max-w-lg w-full space-y-8"
+            >
+              <div className="flex items-start justify-between">
+                <div className="space-y-1">
+                  <h2 className="text-3xl font-light">Get more credits</h2>
+                  <p className="text-[#1a1a1a]/50 font-sans text-sm">Each video generation uses 1 credit.</p>
+                </div>
+                <button onClick={() => setShowPaywall(false)} className="p-2 hover:bg-black/5 rounded-full transition-colors text-[#1a1a1a]/40 hover:text-[#1a1a1a]">✕</button>
+              </div>
+
+              <div className="space-y-3">
+                {CREDIT_PACKS.map(pack => (
+                  <button
+                    key={pack.id}
+                    onClick={() => handleBuyCredits(pack.id)}
+                    className="w-full flex items-center justify-between bg-[#f5f5f0] hover:bg-[#5A5A40]/10 border border-transparent hover:border-[#5A5A40]/30 rounded-2xl px-6 py-4 transition-all group"
+                  >
+                    <div className="text-left">
+                      <p className="font-bold text-lg">{pack.label} Pack</p>
+                      <p className="text-sm text-[#1a1a1a]/50 font-sans">⚡ {pack.credits} credits</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold text-xl text-[#5A5A40]">{pack.price}</p>
+                      <p className="text-xs text-[#1a1a1a]/40 font-sans">${(pack.unitAmount / pack.credits / 100).toFixed(2)} each</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <main className="max-w-4xl mx-auto px-6 pb-20">
         <AnimatePresence mode="wait">
@@ -215,7 +683,7 @@ export default function App() {
                 </p>
               </div>
 
-              <div className="grid md:grid-cols-2 gap-6 max-w-2xl mx-auto">
+              <div className="grid md:grid-cols-3 gap-6 max-w-3xl mx-auto">
                 <button
                   onClick={() => handleStart('project')}
                   className="group relative bg-white p-8 rounded-[32px] shadow-sm hover:shadow-xl transition-all border border-black/5 flex flex-col items-center text-center space-y-4"
@@ -239,6 +707,19 @@ export default function App() {
                   <div className="space-y-1">
                     <h3 className="text-2xl font-semibold">Free Draw</h3>
                     <p className="text-sm text-white/60 font-sans">Upload any drawing and watch it pop out!</p>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => { loadMemories(); setScreen('memories'); }}
+                  className="group relative bg-white p-8 rounded-[32px] shadow-sm hover:shadow-xl transition-all border border-black/5 flex flex-col items-center text-center space-y-4"
+                >
+                  <div className="w-16 h-16 bg-[#f5f5f0] rounded-full flex items-center justify-center text-3xl group-hover:scale-110 transition-transform">
+                    🎞️
+                  </div>
+                  <div className="space-y-1">
+                    <h3 className="text-2xl font-semibold">My Memories</h3>
+                    <p className="text-sm text-[#1a1a1a]/50 font-sans">Replay your animations.</p>
                   </div>
                 </button>
               </div>
@@ -552,12 +1033,74 @@ export default function App() {
               </div>
             </motion.div>
           )}
+          {screen === 'memories' && (
+            <motion.div
+              key="memories"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="space-y-8"
+            >
+              <div className="flex items-center gap-4">
+                <button onClick={() => setScreen('welcome')} className="p-2 hover:bg-black/5 rounded-full transition-colors">
+                  <ArrowLeft className="w-6 h-6" />
+                </button>
+                <h2 className="text-4xl">My Memories</h2>
+              </div>
+
+              {memories.length === 0 ? (
+                <div className="text-center py-24 space-y-4 text-[#1a1a1a]/40">
+                  <div className="text-6xl">🎞️</div>
+                  <p className="font-sans text-lg">No memories yet.</p>
+                  <p className="font-sans text-sm">Bring a doodle to life to start your collection!</p>
+                </div>
+              ) : (
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {memories.map(gen => (
+                    <button
+                      key={gen.id}
+                      onClick={() => setActiveMemory(gen)}
+                      className="group bg-white rounded-3xl border border-black/5 hover:border-[#5A5A40] hover:shadow-md transition-all overflow-hidden text-left"
+                    >
+                      <div className="relative aspect-video bg-[#f5f5f0] overflow-hidden">
+                        {gen.thumbnail_url ? (
+                          <img
+                            src={gen.thumbnail_url}
+                            alt=""
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-4xl">🎨</div>
+                        )}
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                          <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 rounded-full p-3 shadow-lg">
+                            <Play className="w-6 h-6 text-[#5A5A40] fill-current" />
+                          </div>
+                        </div>
+                      </div>
+                      <div className="p-4 space-y-1">
+                        <p className="font-bold truncate">{gen.drawing_prompt || 'Free Draw'}</p>
+                        <p className="text-xs text-[#1a1a1a]/40 font-sans">
+                          {new Date(gen.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          )}
+
         </AnimatePresence>
       </main>
 
       <footer className="fixed bottom-0 left-0 right-0 p-4 text-center pointer-events-none">
-        <p className="text-[10px] uppercase tracking-[0.2em] text-[#1a1a1a]/30 font-sans font-bold">
-          Powered by Gemini & Veo
+        <p className="text-[10px] uppercase tracking-[0.2em] text-[#1a1a1a]/30 font-sans font-bold pointer-events-auto">
+          Powered by Gemini &amp; Veo
+          {' · '}
+          <a href="/tos" className="hover:text-[#1a1a1a]/60 transition-colors">Terms</a>
+          {' · '}
+          <a href="/privacy" className="hover:text-[#1a1a1a]/60 transition-colors">Privacy</a>
         </p>
       </footer>
     </div>

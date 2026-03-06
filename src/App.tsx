@@ -268,9 +268,17 @@ export default function App() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const cameraPreviewRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
+  const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
   const startCamera = async () => {
+    // On mobile, use native camera input — far more reliable than getUserMedia on iOS
+    if (isMobile) {
+      cameraInputRef.current?.click();
+      return;
+    }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'environment' },
@@ -814,6 +822,14 @@ export default function App() {
                   ref={fileInputRef}
                   onChange={handleFileUpload}
                   accept="image/*"
+                  className="hidden"
+                />
+                <input
+                  type="file"
+                  ref={cameraInputRef}
+                  onChange={handleFileUpload}
+                  accept="image/*"
+                  capture="environment"
                   className="hidden"
                 />
               </div>

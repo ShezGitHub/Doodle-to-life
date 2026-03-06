@@ -841,6 +841,7 @@ export default function App() {
                   ref={cameraPreviewRef}
                   autoPlay
                   playsInline
+                  muted
                   className="w-full h-full object-cover"
                 />
                 <div className="absolute inset-0 border-[16px] border-white/10 pointer-events-none rounded-[40px]" />

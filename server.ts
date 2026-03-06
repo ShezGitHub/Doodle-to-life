@@ -394,15 +394,19 @@ async function startServer() {
     res.json(rows);
   });
 
-  if (process.env.NODE_ENV === "production") {
+  const distPath = path.join(__dirname, "dist");
+  const isProd = process.env.NODE_ENV === "production" || fs.existsSync(path.join(distPath, "index.html"));
+
+  if (isProd) {
     // --- Production: serve compiled React app ---
-    const distPath = path.join(__dirname, "dist");
+    console.log("[server] Production mode — serving from", distPath);
     app.use(express.static(distPath));
     app.get("*", (_req, res) => {
       res.sendFile(path.join(distPath, "index.html"));
     });
   } else {
     // --- Development: Vite dev server ---
+    console.log("[server] Development mode — using Vite dev server");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",

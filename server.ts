@@ -119,6 +119,9 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
+  // Trust Railway's reverse proxy so secure cookies and OAuth callbacks work over HTTPS
+  app.set("trust proxy", 1);
+
   // Stripe webhook needs raw body — register BEFORE express.json
   app.post(
     "/api/webhooks/stripe",

@@ -230,6 +230,14 @@ export default function App() {
     return () => clearTimeout(t);
   }, [paymentSuccess]);
 
+  // Attach camera stream to video element once the camera screen has rendered
+  useEffect(() => {
+    if (screen === 'camera' && cameraStream && cameraPreviewRef.current) {
+      cameraPreviewRef.current.srcObject = cameraStream;
+      cameraPreviewRef.current.play().catch(() => {});
+    }
+  }, [screen, cameraStream]);
+
   const handleLogout = async () => {
     await fetch('/auth/logout', { method: 'POST' });
     setUser(null);
@@ -271,9 +279,6 @@ export default function App() {
       setCameraStream(stream);
       setIsCameraActive(true);
       setScreen('camera');
-      if (cameraPreviewRef.current) {
-        cameraPreviewRef.current.srcObject = stream;
-      }
     } catch (err) {
       console.error("Error accessing camera:", err);
       setError("Could not access camera. Please check permissions.");

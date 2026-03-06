@@ -211,6 +211,11 @@ async function startServer() {
     });
   });
 
+  // Health check — used by Railway to verify the container is ready before routing traffic
+  app.get("/health", (_req, res) => {
+    res.json({ status: "ok", ts: Date.now() });
+  });
+
   app.get("/api/me", (req, res) => {
     if (!req.user) {
       res.status(401).json({ error: "Not authenticated" });

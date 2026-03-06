@@ -381,6 +381,42 @@ async function startServer() {
     }
   });
 
+  // Admin stats — only accessible by the account whose email matches ADMIN_EMAIL env var
+  app.get("/api/admin/stats", (req, res) => {
+    if (!req.user) {
+      res.status(401).json({ error: "Not authenticated" });
+      return;
+    }
+    const u = req.user as any;
+    const adminEmail = process.env.ADMIN_EMAIL;
+    if (!adminEmail || u.email !== adminEmail) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const totalUsers     = (db.prepare("SELECT COUNT(*) as n FROM users").get() as any).n;
+    const totalGens      = (db.prepare("SELECT COUNT(*) as n FROM generations").get() as any).n;
+    const totalCredits   = (db.prepare("SELECT SUM(credits) as n FROM users").get() as any).n ?? 0;
+    const usersToday     = (db.prepare("SELECT COUNT(*) as n FROM users WHERE created_at >= date('now')").get() as any).n;
+    const usersThisWeek  = (db.prepare("SELECT COUNT(*) as n FROM users WHERE created_at >= date('now', '-7 days')").get() as any).n;
+    const gensToday      = (db.prepare("SELECT COUNT(*) as n FROM generations WHERE created_at >= date('now')").get() as any).n;
+    const gensThisWeek   = (db.prepare("SELECT COUNT(*) as n FROM generations WHERE created_at >= date('now', '-7 days')").get() as any).n;
+    const recentUsers    = db.prepare("SELECT name, email, credits, created_at FROM users ORDER BY created_at DESC LIMIT 20").all();
+    const topGenerators  = db.prepare(`
+      SELECT u.name, u.email, COUNT(g.id) as gen_count
+      FROM users u JOIN generations g ON g.user_id = u.id
+      GROUP BY u.id ORDER BY gen_count DESC LIMIT 10
+    `).all();
+
+    res.json({
+      users: { total: totalUsers, today: usersToday, this_week: usersThisWeek },
+      generations: { total: totalGens, today: gensToday, this_week: gensThisWeek },
+      credits_in_system: totalCredits,
+      recent_signups: recentUsers,
+      top_generators: topGenerators,
+    });
+  });
+
   // Get user's past generations
   app.get("/api/generations", (req, res) => {
     if (!req.user) {

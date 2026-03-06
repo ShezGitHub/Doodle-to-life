@@ -52,6 +52,7 @@ db.exec(`
   )
 `);
 db.exec(`CREATE INDEX IF NOT EXISTS idx_gen_user ON generations(user_id)`);
+fs.mkdirSync(path.join(__dirname, "data", "videos"), { recursive: true });
 fs.mkdirSync(path.join(__dirname, "data", "images"), { recursive: true });
 
 // --- Stripe setup ---

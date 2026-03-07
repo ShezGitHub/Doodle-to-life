@@ -118,7 +118,7 @@ passport.deserializeUser((id: string, done) => {
 // --- Express app ---
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = parseInt(process.env.PORT || "3000", 10);
 
   // Trust Railway's reverse proxy so secure cookies and OAuth callbacks work over HTTPS
   app.set("trust proxy", 1);
@@ -467,8 +467,18 @@ async function startServer() {
     app.use(vite.middlewares);
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
+  const httpServer = app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
+  });
+
+  // Graceful shutdown — Railway sends SIGTERM when replacing containers.
+  // Exit cleanly so npm doesn't report a "command failed" error.
+  process.on("SIGTERM", () => {
+    console.log("[server] SIGTERM received, shutting down gracefully");
+    httpServer.close(() => {
+      db.close();
+      process.exit(0);
+    });
   });
 }
 

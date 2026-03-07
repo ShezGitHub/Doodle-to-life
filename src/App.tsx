@@ -551,7 +551,7 @@ export default function App() {
                 : "bg-[#5A5A40]/10 text-[#5A5A40] border border-[#5A5A40]/20 hover:bg-[#5A5A40]/20"
             )}
           >
-            ⚡ {credits ?? '…'}
+            ⚡ <span>{credits ?? '…'}</span> <span className="font-normal opacity-70">{credits === 1 ? 'credit' : 'credits'}</span>
           </button>
 
           {user.avatarUrl ? (

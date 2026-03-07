@@ -127,7 +127,7 @@ function LegalPage({ page }: { page: 'tos' | 'privacy' }) {
 
             <section className="space-y-3">
               <h2 className="text-lg font-bold">7. Contact</h2>
-              <p className="text-[#1a1a1a]/70 leading-relaxed">Questions? Email us at <a href="mailto:hello@doodlive.app" className="underline text-[#5A5A40]">hello@doodlive.app</a>.</p>
+              <p className="text-[#1a1a1a]/70 leading-relaxed">Questions? Email us at <a href="mailto:shez.ahmed89@gmail.com" className="underline text-[#5A5A40]">shez.ahmed89@gmail.com</a>.</p>
             </section>
           </>
         ) : (
@@ -169,7 +169,7 @@ function LegalPage({ page }: { page: 'tos' | 'privacy' }) {
 
             <section className="space-y-3">
               <h2 className="text-lg font-bold">6. Contact</h2>
-              <p className="text-[#1a1a1a]/70 leading-relaxed">For privacy questions or data deletion requests, email <a href="mailto:hello@doodlive.app" className="underline text-[#5A5A40]">hello@doodlive.app</a>.</p>
+              <p className="text-[#1a1a1a]/70 leading-relaxed">For privacy questions or data deletion requests, email <a href="mailto:shez.ahmed89@gmail.com" className="underline text-[#5A5A40]">shez.ahmed89@gmail.com</a>.</p>
             </section>
           </>
         )}

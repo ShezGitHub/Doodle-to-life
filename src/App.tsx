@@ -375,12 +375,21 @@ export default function App() {
       setScreen('result');
     } catch (err: any) {
       console.error(err);
-      if (err.code === 'no_credits') {
+      if (err.code === 'no_credits' || err.message === 'no_credits') {
         setShowPaywall(true);
         setScreen('review');
         return;
       }
-      setError(err.message || "Something went wrong while bringing your doodle to life.");
+
+      const ERROR_MESSAGES: Record<string, string> = {
+        quota_exceeded:      "Our AI is taking a quick breather — please try again in a few minutes! Your credit has been returned. 🎨",
+        invalid_image:       "We couldn't read that image. Try a clearer photo with good lighting.",
+        service_unavailable: "The animation service is temporarily busy. Please try again shortly.",
+        generation_failed:   "Something went wrong creating your animation. Your credit has been returned — please try again!",
+      };
+
+      const msg = ERROR_MESSAGES[err.message] ?? "Something went wrong. Your credit has been returned — please try again!";
+      setError(msg);
       setScreen('review');
     }
   };

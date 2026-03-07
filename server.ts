@@ -381,8 +381,20 @@ async function startServer() {
     } catch (err: any) {
       // Refund the credit on failure
       db.prepare("UPDATE users SET credits = credits + 1 WHERE id = ?").run(u.id);
-      console.error("[generate]", err.message);
-      res.status(500).json({ error: err.message || "Video generation failed" });
+      const raw = err.message || "";
+      console.error("[generate]", raw);
+
+      // Parse known Gemini API errors into friendly codes
+      let code = "generation_failed";
+      if (raw.includes("429") || raw.includes("RESOURCE_EXHAUSTED") || raw.includes("quota")) {
+        code = "quota_exceeded";
+      } else if (raw.includes("400") || raw.includes("INVALID_ARGUMENT")) {
+        code = "invalid_image";
+      } else if (raw.includes("503") || raw.includes("UNAVAILABLE")) {
+        code = "service_unavailable";
+      }
+
+      res.status(500).json({ error: code });
     }
   });
 

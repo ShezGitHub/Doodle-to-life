@@ -197,6 +197,8 @@ export default function App() {
   const [memories, setMemories] = useState<Generation[]>([]);
   const [memoriesLoaded, setMemoriesLoaded] = useState(false);
   const [activeMemory, setActiveMemory] = useState<Generation | null>(null);
+  const [activeSketch, setActiveSketch] = useState<Generation | null>(null);
+  const [memoriesView, setMemoriesView] = useState<'grid' | 'scrapbook'>('grid');
   const [screen, setScreen] = useState<Screen>('welcome');
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
@@ -638,6 +640,61 @@ export default function App() {
                   >
                     ✕
                   </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Sketch viewer modal */}
+      <AnimatePresence>
+        {activeSketch && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-6"
+            onClick={() => setActiveSketch(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, rotate: -3 }}
+              animate={{ scale: 1, opacity: 1, rotate: -1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={e => e.stopPropagation()}
+              className="bg-white rounded-[8px] shadow-2xl overflow-visible max-w-sm w-full p-3 pb-8 relative"
+            >
+              {/* Tape strip */}
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-16 h-5 bg-yellow-200/90 rounded-sm z-10" style={{ opacity: 0.9 }} />
+              {activeSketch.thumbnail_url ? (
+                <img
+                  src={activeSketch.thumbnail_url}
+                  alt="Your sketch"
+                  className="w-full object-contain rounded-[4px]"
+                  style={{ maxHeight: 380 }}
+                />
+              ) : (
+                <div className="w-full aspect-square bg-[#f5f5f0] rounded-[4px] flex items-center justify-center text-6xl">🎨</div>
+              )}
+              <div className="mt-4 flex items-center justify-between gap-3 px-1">
+                <div className="min-w-0">
+                  <p className="font-bold font-serif truncate">{activeSketch.drawing_prompt || 'Free Draw'}</p>
+                  <p className="text-xs text-[#1a1a1a]/40 font-sans mt-0.5">
+                    {new Date(activeSketch.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => { setActiveSketch(null); setActiveMemory(activeSketch); }}
+                    className="flex items-center gap-1.5 bg-[#5A5A40] text-white px-4 py-2 rounded-full font-sans font-semibold text-sm hover:opacity-90 transition-opacity"
+                  >
+                    <Play className="w-3.5 h-3.5 fill-current" />
+                    Watch video
+                  </button>
+                  <button
+                    onClick={() => setActiveSketch(null)}
+                    className="p-2 hover:bg-black/5 rounded-full transition-colors text-[#1a1a1a]/40"
+                  >✕</button>
                 </div>
               </div>
             </motion.div>
@@ -1183,13 +1240,14 @@ export default function App() {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
-              className="space-y-8"
+              className="space-y-6"
             >
+              {/* Header row */}
               <div className="flex items-center gap-4">
                 <button onClick={() => setScreen('welcome')} className="p-2 hover:bg-black/5 rounded-full transition-colors">
                   <ArrowLeft className="w-6 h-6" />
                 </button>
-                <h2 className="text-4xl">My Memories</h2>
+                <h2 className="text-4xl flex-1">My Memories</h2>
               </div>
 
               {memories.length === 0 ? (
@@ -1199,38 +1257,122 @@ export default function App() {
                   <p className="font-sans text-sm">Bring a doodle to life to start your collection!</p>
                 </div>
               ) : (
-                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {memories.map(gen => (
+                <>
+                  {/* Tab switcher */}
+                  <div className="flex gap-1 bg-black/5 rounded-2xl p-1 w-fit">
                     <button
-                      key={gen.id}
-                      onClick={() => setActiveMemory(gen)}
-                      className="group bg-white rounded-3xl border border-black/5 hover:border-[#5A5A40] hover:shadow-md transition-all overflow-hidden text-left"
+                      onClick={() => setMemoriesView('grid')}
+                      className={cn(
+                        "px-5 py-2 rounded-xl text-sm font-sans font-semibold transition-all",
+                        memoriesView === 'grid'
+                          ? "bg-white shadow-sm text-[#1a1a1a]"
+                          : "text-[#1a1a1a]/50 hover:text-[#1a1a1a]"
+                      )}
                     >
-                      <div className="relative aspect-video bg-[#f5f5f0] overflow-hidden">
-                        {gen.thumbnail_url ? (
-                          <img
-                            src={gen.thumbnail_url}
-                            alt=""
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-4xl">🎨</div>
-                        )}
-                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
-                          <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 rounded-full p-3 shadow-lg">
-                            <Play className="w-6 h-6 text-[#5A5A40] fill-current" />
+                      🎬 Animations
+                    </button>
+                    <button
+                      onClick={() => setMemoriesView('scrapbook')}
+                      className={cn(
+                        "px-5 py-2 rounded-xl text-sm font-sans font-semibold transition-all",
+                        memoriesView === 'scrapbook'
+                          ? "bg-white shadow-sm text-[#1a1a1a]"
+                          : "text-[#1a1a1a]/50 hover:text-[#1a1a1a]"
+                      )}
+                    >
+                      🎨 Scrapbook
+                    </button>
+                  </div>
+
+                  {/* ── Animations grid ── */}
+                  {memoriesView === 'grid' && (
+                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {memories.map(gen => (
+                        <div
+                          key={gen.id}
+                          className="group bg-white rounded-3xl border border-black/5 hover:border-[#5A5A40] hover:shadow-md transition-all overflow-hidden"
+                        >
+                          {/* Sketch thumbnail — click to view sketch */}
+                          <button
+                            onClick={() => setActiveSketch(gen)}
+                            className="relative w-full aspect-video bg-[#f5f5f0] overflow-hidden block text-left"
+                          >
+                            {gen.thumbnail_url ? (
+                              <img
+                                src={gen.thumbnail_url}
+                                alt=""
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-4xl">🎨</div>
+                            )}
+                            {/* "View sketch" hint on hover */}
+                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-end p-3">
+                              <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 text-[10px] font-sans font-bold uppercase tracking-widest text-[#1a1a1a]/60 px-2.5 py-1 rounded-full">
+                                View sketch
+                              </span>
+                            </div>
+                          </button>
+
+                          {/* Card footer — title + play button */}
+                          <div className="p-4 flex items-center gap-3">
+                            <div className="flex-1 min-w-0">
+                              <p className="font-bold truncate">{gen.drawing_prompt || 'Free Draw'}</p>
+                              <p className="text-xs text-[#1a1a1a]/40 font-sans mt-0.5">
+                                {new Date(gen.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => setActiveMemory(gen)}
+                              className="shrink-0 flex items-center gap-1.5 bg-[#5A5A40]/10 hover:bg-[#5A5A40] text-[#5A5A40] hover:text-white px-3 py-1.5 rounded-full font-sans font-semibold text-xs transition-all"
+                            >
+                              <Play className="w-3 h-3 fill-current" />
+                              Play
+                            </button>
                           </div>
                         </div>
-                      </div>
-                      <div className="p-4 space-y-1">
-                        <p className="font-bold truncate">{gen.drawing_prompt || 'Free Draw'}</p>
-                        <p className="text-xs text-[#1a1a1a]/40 font-sans">
-                          {new Date(gen.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                        </p>
-                      </div>
-                    </button>
-                  ))}
-                </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* ── Scrapbook grid ── */}
+                  {memoriesView === 'scrapbook' && (
+                    <div className="columns-2 sm:columns-3 gap-5" style={{ columnGap: '1.25rem' }}>
+                      {memories.map((gen, i) => {
+                        const rotations = [-2.5, 1.5, -1, 2, 0, -1.8, 1.2, -0.5, 2.2, -1.5];
+                        const rot = rotations[i % rotations.length];
+                        return (
+                          <button
+                            key={gen.id}
+                            onClick={() => setActiveSketch(gen)}
+                            className="break-inside-avoid w-full mb-5 block text-left hover:scale-[1.03] hover:z-10 relative transition-transform duration-200"
+                            style={{ transform: `rotate(${rot}deg)` }}
+                          >
+                            <div className="bg-white p-2.5 pb-8 shadow-md hover:shadow-xl transition-shadow rounded-[4px] relative">
+                              {/* Tape */}
+                              <div
+                                className="absolute -top-2.5 left-1/2 -translate-x-1/2 w-12 h-4 bg-yellow-200/80 rounded-sm"
+                                style={{ opacity: 0.85 }}
+                              />
+                              {gen.thumbnail_url ? (
+                                <img
+                                  src={gen.thumbnail_url}
+                                  alt={gen.drawing_prompt || 'sketch'}
+                                  className="w-full object-contain rounded-[2px]"
+                                />
+                              ) : (
+                                <div className="aspect-square bg-[#f5f5f0] flex items-center justify-center text-4xl rounded-[2px]">🎨</div>
+                              )}
+                              <p className="mt-2 text-[11px] font-sans text-center text-[#1a1a1a]/50 italic truncate px-1">
+                                {gen.drawing_prompt || 'Free Draw'}
+                              </p>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </>
               )}
             </motion.div>
           )}

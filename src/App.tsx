@@ -31,7 +31,7 @@ const FloatingDoodle = ({ icon: Icon, delay = 0, className }: { icon: any, delay
   </motion.div>
 );
 
-type Screen = 'welcome' | 'projects' | 'capture' | 'camera' | 'review' | 'generating' | 'result' | 'memories';
+type Screen = 'welcome' | 'projects' | 'capture' | 'camera' | 'review' | 'generating' | 'reveal' | 'result' | 'memories';
 
 interface Generation {
   id: string;
@@ -230,6 +230,13 @@ export default function App() {
     return () => clearTimeout(t);
   }, [paymentSuccess]);
 
+  // Auto-advance from reveal screen to result after the doodle showcase
+  useEffect(() => {
+    if (screen !== 'reveal') return;
+    const t = setTimeout(() => setScreen('result'), 3500);
+    return () => clearTimeout(t);
+  }, [screen]);
+
   // Attach camera stream to video element once the camera screen has rendered
   useEffect(() => {
     if (screen === 'camera' && cameraStream && cameraPreviewRef.current) {
@@ -372,7 +379,7 @@ export default function App() {
         parent_context: parentContext || null,
         created_at: new Date().toISOString(),
       }, ...prev]);
-      setScreen('result');
+      setScreen('reveal');
     } catch (err: any) {
       console.error(err);
       if (err.code === 'no_credits' || err.message === 'no_credits') {
@@ -1013,6 +1020,112 @@ export default function App() {
                   🖌️
                 </motion.div>
               </div>
+            </motion.div>
+          )}
+
+          {/* ── REVEAL: show the doodle before the video plays ── */}
+          {screen === 'reveal' && capturedImage && (
+            <motion.div
+              key="reveal"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="flex flex-col items-center justify-center text-center space-y-8 py-12 relative"
+            >
+              {/* Heading */}
+              <motion.div
+                initial={{ opacity: 0, y: -24 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.15 }}
+                className="space-y-1"
+              >
+                <p className="text-sm font-sans font-bold uppercase tracking-widest text-[#5A5A40]/60">Your masterpiece</p>
+                <h2 className="text-4xl italic font-light">Look what you made! 🎨</h2>
+              </motion.div>
+
+              {/* Doodle card + sparkles */}
+              <div className="relative flex items-center justify-center" style={{ minHeight: 320 }}>
+                {/* Orbiting sparkle emojis */}
+                {(['✨','⭐','🌟','💫','✨','⭐','🌟','💫'] as const).map((emoji, i) => (
+                  <motion.span
+                    key={i}
+                    className="absolute text-2xl pointer-events-none select-none"
+                    style={{
+                      top: `${50 + Math.sin((i / 8) * Math.PI * 2) * 52}%`,
+                      left: `${50 + Math.cos((i / 8) * Math.PI * 2) * 52}%`,
+                    }}
+                    initial={{ opacity: 0, scale: 0 }}
+                    animate={{
+                      opacity: [0, 1, 1, 0],
+                      scale: [0, 1.3, 1, 0],
+                      y: [0, -18, -36],
+                    }}
+                    transition={{
+                      duration: 2.2,
+                      delay: 0.4 + i * 0.18,
+                      repeat: Infinity,
+                      repeatDelay: 0.8,
+                    }}
+                  >
+                    {emoji}
+                  </motion.span>
+                ))}
+
+                {/* The doodle itself — looks pinned like a piece of paper */}
+                <motion.div
+                  initial={{ scale: 0.4, rotate: -12, opacity: 0 }}
+                  animate={{ scale: 1, rotate: -2, opacity: 1 }}
+                  transition={{ type: 'spring', stiffness: 220, damping: 16, delay: 0.1 }}
+                  className="relative bg-white rounded-[32px] shadow-2xl border border-black/5 p-4"
+                  style={{ maxWidth: 300 }}
+                >
+                  {/* Tape strip on top */}
+                  <motion.div
+                    initial={{ scaleX: 0 }}
+                    animate={{ scaleX: 1 }}
+                    transition={{ delay: 0.5, duration: 0.35 }}
+                    className="absolute -top-3 left-1/2 -translate-x-1/2 w-14 h-5 bg-yellow-200/80 rounded-sm"
+                    style={{ transformOrigin: 'center', rotate: '-1deg', opacity: 0.85 }}
+                  />
+                  <img
+                    src={capturedImage}
+                    alt="Your doodle"
+                    className="w-full rounded-[20px] object-contain"
+                    style={{ maxHeight: 280 }}
+                  />
+                  {/* Subtle crayon-border glow */}
+                  <div className="absolute inset-0 rounded-[32px] ring-4 ring-[#5A5A40]/10 pointer-events-none" />
+                </motion.div>
+              </div>
+
+              {/* "Now watch it come to life" + countdown bar */}
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.7 }}
+                className="space-y-3"
+              >
+                <p className="text-[#1a1a1a]/55 font-sans text-base">Now watch it come to life...</p>
+                <div className="w-52 mx-auto bg-black/8 h-1.5 rounded-full overflow-hidden">
+                  <motion.div
+                    initial={{ width: '0%' }}
+                    animate={{ width: '100%' }}
+                    transition={{ duration: 3.4, ease: 'linear', delay: 0.1 }}
+                    className="h-full bg-[#5A5A40] rounded-full"
+                  />
+                </div>
+              </motion.div>
+
+              {/* Skip link */}
+              <motion.button
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 1.2 }}
+                onClick={() => setScreen('result')}
+                className="text-sm font-sans text-[#5A5A40]/50 hover:text-[#5A5A40] transition-colors underline underline-offset-2"
+              >
+                Skip to video →
+              </motion.button>
             </motion.div>
           )}
 

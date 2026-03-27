@@ -434,6 +434,33 @@ async function startServer() {
     });
   });
 
+  // Admin: add credits to a user by email
+  app.post("/api/admin/credits", (req, res) => {
+    if (!req.user) {
+      res.status(401).json({ error: "Not authenticated" });
+      return;
+    }
+    const u = req.user as any;
+    const adminEmail = process.env.ADMIN_EMAIL;
+    if (!adminEmail || u.email !== adminEmail) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+    const { email, amount } = req.body as { email: string; amount: number };
+    if (!email || !amount || typeof amount !== "number" || amount <= 0) {
+      res.status(400).json({ error: "Provide email and a positive amount" });
+      return;
+    }
+    const target = db.prepare("SELECT id, email, credits FROM users WHERE email = ?").get(email) as any;
+    if (!target) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+    db.prepare("UPDATE users SET credits = credits + ? WHERE email = ?").run(amount, email);
+    const updated = db.prepare("SELECT credits FROM users WHERE email = ?").get(email) as any;
+    res.json({ email, credits_added: amount, new_balance: updated.credits });
+  });
+
   // Get user's past generations
   app.get("/api/generations", (req, res) => {
     if (!req.user) {
